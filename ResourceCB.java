@@ -1,3 +1,12 @@
+/*
+ *   CSCE311  Proj3 Resource 
+ *   University of South Carolina
+ *   authoer: Yixing Cheng
+ *   date: Mar/31/2014
+ *   ResourceCB.java
+ */
+
+
 package osp.Resources;
 
 import java.util.*;
@@ -14,6 +23,9 @@ import osp.Memory.*;
 */
 public class ResourceCB extends IflResourceCB
 {
+    private static Hashtable<ThreadCB, RRB> threadRRBTable;
+    private static RRB nullRRB;
+
     /**
        Creates a new ResourceCB instance with the given number of 
        available instances. This constructor must have super(qty) 
@@ -24,7 +36,8 @@ public class ResourceCB extends IflResourceCB
     public ResourceCB(int qty)
     {
         // your code goes here
-
+       super(qty);
+    
     }
 
     /**
@@ -36,7 +49,8 @@ public class ResourceCB extends IflResourceCB
     public static void init()
     {
         // your code goes here
-
+       threadRRBTable = new Hashtable<ThreadCB, RRB>();
+       nullRRB = new RRB(null, null, 0);
     }
 
     /**
@@ -53,7 +67,33 @@ public class ResourceCB extends IflResourceCB
     public RRB  do_acquire(int quantity) 
     {
         // your code goes here
+       RRB request;
 
+       TaskCB currentTask = null;                                                                 //get the currently running thread
+       ThreadCB currentThread = null;
+       try {
+          currentTask = MMU.getPTBR().getTask();
+          currentThread = currentTask.getCurrentThread();
+        } catch (NullPointerException e){
+        
+         }
+
+       if( (quantity + this.getAllocated(currentThread) > this.getTotal())){
+               return null;
+           }
+       else{
+           if(threadRRBTable.containsKey(currentThread)){
+ 
+               } 
+           else{
+              threadRRBTable.put(currentThread, nullRRB);
+              }
+
+            request = new RRB(currentThread, this, quantity);
+          }       
+
+
+       return request;
     }
 
     /**
@@ -65,7 +105,9 @@ public class ResourceCB extends IflResourceCB
     public static Vector do_deadlockDetection()
     {
         // your code goes here
+       Vector vector = new Vector();
 
+       return vector;
     }
 
     /**
@@ -125,6 +167,10 @@ public class ResourceCB extends IflResourceCB
     /*
        Feel free to add methods/fields to improve the readability of your code
     */
+    private boolean decideGrant(){
+         
+
+     }
 
 }
 

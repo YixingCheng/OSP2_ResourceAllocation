@@ -1,3 +1,11 @@
+/*
+ *   CSCE311  Proj3 Resource 
+ *   University of South Carolina
+ *   authoer: Yixing Cheng
+ *   date: Mar/31/2014
+ *   RRB.java
+ */
+
 package osp.Resources;
 
 import java.util.*;
@@ -24,7 +32,7 @@ public class RRB extends IflRRB
     */   
     public RRB(ThreadCB thread, ResourceCB resource,int quantity)
     {
-       super(); // your code goes here
+       super(thread, resource, quantity);    // your code goes here
 
     }
 
@@ -38,7 +46,21 @@ public class RRB extends IflRRB
     public void do_grant()
     {
         // your code goes here
+       ThreadCB requestThread = this.getThread();                                        //retrive the thread that is requesting the resource
 
+       ResourceCB requestRes = this.getResource();                                       // retrive which resource type the thread is being issued 
+
+       int newAvailable = requestRes.getAvailable() - this.getQuantity();                //calcuate the new available instance of resource after request
+
+       requestRes.setAvailable(newAvailable);                                            //set the avaiable instance of resource to the new value
+
+       int newAllocated = requestRes.getAllocated(requestThread) + this.getQuantity();   //calcuate the instance of resource after allocation
+
+       requestRes.setAllocated(requestThread, newAllocated);                             //set the new allocated instance of resource
+  
+       this.setStatus(Granted);
+
+       this.notifyThreads();       
     }
 
 
