@@ -24,7 +24,7 @@ public class RRB extends IflRRB
     */   
     public RRB(ThreadCB thread, ResourceCB resource,int quantity)
     {
-        // your code goes here
+       super(); // your code goes here
 
     }
 
