@@ -23,8 +23,10 @@ import osp.Memory.*;
 */
 public class ResourceCB extends IflResourceCB
 {
-    private static Hashtable<ThreadCB, RRB> threadRRBTable;
-    private static RRB nullRRB;
+    protected static Hashtable<ThreadCB, RRB> threadRRBTable;             //use a hash table as the data structure for implement banks's algorithm
+    protected static RRB nullRRB;                                         // a null RRB object for place holder
+    //protected static Vector<ThreadCB> vector;
+    protected static int resourceNum;                                     // number of resource type
 
     /**
        Creates a new ResourceCB instance with the given number of 
@@ -36,7 +38,7 @@ public class ResourceCB extends IflResourceCB
     public ResourceCB(int qty)
     {
         // your code goes here
-       super(qty);
+       super(qty);                                                       //number of instance of this resource
     
     }
 
@@ -49,8 +51,10 @@ public class ResourceCB extends IflResourceCB
     public static void init()
     {
         // your code goes here
-       threadRRBTable = new Hashtable<ThreadCB, RRB>();
+       threadRRBTable = new Hashtable<ThreadCB, RRB>();                   //initialize hashtable and null RRB object
        nullRRB = new RRB(null, null, 0);
+       //vector = new Vector<ThreadCB>();
+       resourceNum = ResourceTable.getSize();
     }
 
     /**
@@ -69,29 +73,57 @@ public class ResourceCB extends IflResourceCB
         // your code goes here
        RRB request;
 
-       TaskCB currentTask = null;                                                                 //get the currently running thread
+       TaskCB currentTask = null;                                                                 //get the requesting thread
        ThreadCB currentThread = null;
+
        try {
-          currentTask = MMU.getPTBR().getTask();
+          currentTask = MMU.getPTBR().getTask();                                            
           currentThread = currentTask.getCurrentThread();
-        } catch (NullPointerException e){
-        
+        } catch (NullPointerException e){        
          }
 
-       if( (quantity + this.getAllocated(currentThread) > this.getTotal())){
-               return null;
+       if( (quantity + this.getAllocated(currentThread) > this.getTotal())){                     //if the request + allocated is more than total, return null
+              return null;
            }
-       else{
-           if(threadRRBTable.containsKey(currentThread)){
- 
-               } 
-           else{
-              threadRRBTable.put(currentThread, nullRRB);
-              }
 
-            request = new RRB(currentThread, this, quantity);
-          }       
+       if(!threadRRBTable.containsKey(currentThread)){                                           //if the requesting thread is not in hashtable, put it in the hashtable
+             threadRRBTable.put(currentThread, nullRRB); 
+          } 
 
+       request = new RRB(currentThread, this, quantity);       
+
+       //here we determine which deadlock strategy we employ
+       int deadlockStrat = getDeadlockMethod();
+       
+       switch(deadlockStrat){
+                  case Detection:
+                         //   deadlock detection strategy
+                         break;
+                  case Avoidance:
+                         //  need to fix here
+                         if(isGrant(request) == Granted){
+                                 request.grant();
+                             }                   
+      
+                         if((request.getStatus() == Suspended) && (!threadRRBTable.containsValue(request))){
+                                 threadRRBTable.put(currentThread, request);
+                            }
+                       
+                      //   RRBStatus = isGrant(request);
+                      //   switch(RRBStatus){
+                      //          case Granted:
+                      //             request.grant();
+                      //             break;
+                      //          case Suspended:
+                      //             if(!threadRRBTable.containsValue(request)){
+                      //                    threadRRBTable.put(currentThread, request);
+                      //                 }
+                      //          default:
+                      //             break;
+                      //       }
+                         break;
+                  default: break;
+          } 
 
        return request;
     }
@@ -105,9 +137,8 @@ public class ResourceCB extends IflResourceCB
     public static Vector do_deadlockDetection()
     {
         // your code goes here
-       Vector vector = new Vector();
 
-       return vector;
+       return null;
     }
 
     /**
@@ -121,6 +152,39 @@ public class ResourceCB extends IflResourceCB
     public static void do_giveupResources(ThreadCB thread)
     {
         // your code goes here
+        if(!threadRRBTable.containsKey(thread))
+               return;
+
+        for(int resourceID = 0; resourceID < resourceNum; resourceID++ ){
+                 ResourceCB checkResource = ResourceTable.getResourceCB(resourceID);
+                 if(checkResource.getAllocated(thread) != 0){
+                        checkResource.setAvailable(checkResource.getAvailable() + checkResource.getAllocated(thread));
+                    }
+                 checkResource.setAllocated(thread, 0);
+           }
+
+        threadRRBTable.remove(thread);
+
+        Collection<RRB> suspendedThreads = threadRRBTable.values();
+        Iterator<RRB> threadIterator = suspendedThreads.iterator();
+ 
+        
+        while(threadIterator.hasNext()){
+                RRB checkRRB = threadIterator.next();
+                if(bankerAlgo(checkRRB)){
+                       checkRRB.setStatus(Granted);
+                       //System.out.println("debug");
+                       ThreadCB checkThread = checkRRB.getThread();
+                       if (checkThread != null){
+                           if (checkThread.getStatus() != ThreadKill){
+                                  checkRRB.grant();
+                                //  System.out.println("debug");
+                                  threadRRBTable.put(checkThread, nullRRB);
+                            }
+                         }
+                        
+                  }
+         }
 
     }
 
@@ -134,7 +198,41 @@ public class ResourceCB extends IflResourceCB
     public void do_release(int quantity)
     {
         // your code goes here
+        TaskCB currentTask = null;                                                                 //get the requesting thread
+        ThreadCB currentThread = null;
 
+        try {
+            currentTask = MMU.getPTBR().getTask();                                            
+            currentThread = currentTask.getCurrentThread();
+           } catch (NullPointerException e){        
+          }
+
+        int allocatedInst = this.getAllocated(currentThread);
+        if (quantity > allocatedInst){
+              quantity = allocatedInst;
+          }
+        this.setAllocated(currentThread, allocatedInst - quantity);
+        this.setAvailable(this.getAvailable() + quantity);
+        
+        Collection<RRB> suspendedThreads = threadRRBTable.values();
+        Iterator<RRB> threadIterator = suspendedThreads.iterator();
+ 
+        while(threadIterator.hasNext()){
+                RRB checkRRB = threadIterator.next();
+                if(bankerAlgo(checkRRB)){
+                       checkRRB.setStatus(Granted);
+                      // System.out.println("debug");
+                       ThreadCB checkThread = checkRRB.getThread();
+                       if (checkThread != null){
+                           if (checkThread.getStatus() != ThreadKill){
+                                  checkRRB.grant();
+                                //  System.out.println("debug");
+                                  threadRRBTable.put(checkThread, nullRRB);
+                            }
+                         }
+                        
+                  }
+         }
     }
 
     /** Called by OSP after printing an error message. The student can
@@ -167,11 +265,115 @@ public class ResourceCB extends IflResourceCB
     /*
        Feel free to add methods/fields to improve the readability of your code
     */
-    private boolean decideGrant(){
+    private static int isGrant(RRB request){
          
+         ThreadCB requestThread = request.getThread();                                                //get the requesting thread
+         ResourceCB requestResource = request.getResource();
+         int requestNeed, max, availableInst;
 
-     }
+         requestNeed = requestResource.getAllocated(requestThread) + request.getQuantity();
+         max = requestResource.getMaxClaim(requestThread);
 
+         availableInst = requestResource.getAvailable();
+
+         if(requestNeed > max){                                                                      //deny request if need more than MAX 
+                request.setStatus(Denied);
+                return Denied;
+           }
+                                                                                                    //if the thread is requesting more than what currently have, suspend it and put it on the waiting queue of this RRB, also set status of this RRB to suspended
+         if(request.getQuantity() > availableInst){
+              if( (requestThread.getStatus() != ThreadWaiting) && (request.getStatus() != Suspended)){
+                     requestThread.suspend(request);
+                 }
+
+              if(!threadRRBTable.containsValue(request)){
+                     threadRRBTable.put(requestThread, request);
+                 } 
+             
+              request.setStatus(Suspended);
+              return Suspended;                 
+           }
+
+         if(bankerAlgo(request)){
+               request.setStatus(Granted);
+               return Granted;
+           }          
+         else{
+             if((requestThread.getStatus() != ThreadWaiting) && (requestThread.getStatus() != ThreadKill) && (request.getStatus() != Suspended))                {
+                   requestThread.suspend(request);
+
+                   if(threadRRBTable.containsValue(request)){
+                           threadRRBTable.put(requestThread, request); 
+                      } 
+                   
+                   request.setStatus(Suspended);
+                   return Suspended;
+                }
+             }
+
+        return Suspended;     
+    }
+
+    private static boolean bankerAlgo(RRB request){
+
+            //ThreadCB requestThread = request.getThread();
+    
+            int[] availableInstArray = new int[resourceNum];
+            for(int i = 0; i < resourceNum; i++){
+                  availableInstArray[i] = ResourceTable.getResourceCB(i).getAvailable();
+               }            
+
+            Enumeration<ThreadCB> enumThreads = threadRRBTable.keys();
+            Vector<ThreadCB> threadVector = new Vector<ThreadCB>();
+            
+            while(enumThreads.hasMoreElements()){
+                   threadVector.addElement(enumThreads.nextElement());
+               }
+            
+            boolean goodThread = true;
+            
+            while(!threadVector.isEmpty()){
+                  
+                   int size = threadVector.size();
+                   for(int threadID = 0; threadID < threadVector.size(); threadID++ ){
+                    
+                         ThreadCB checkThread = threadVector.get(threadID);
+                         goodThread = true;
+                   
+                         for(int resourceID = 0; resourceID < resourceNum; resourceID++){
+                           
+                                ResourceCB checkResource = ResourceTable.getResourceCB(resourceID);
+                                if(checkResource.getMaxClaim(checkThread)-checkResource.getAllocated(checkThread) >= checkResource.getAvailable()){
+                                      goodThread = false;
+                                      break;
+                                 }
+                           }
+                         
+                         if(goodThread){
+                                 for(int i = 0; i < resourceNum; i++){
+                                       ResourceCB checkResource = ResourceTable.getResourceCB(i);
+                                       checkResource.setAvailable(checkResource.getAllocated(checkThread) + checkResource.getAvailable()); 
+                                     }
+ 
+                                threadVector.remove(checkThread);
+                                break;
+                             }
+                      }
+
+                    if(size == threadVector.size()){
+                           for(int i = 0; i < resourceNum; i++){
+                                   ResourceTable.getResourceCB(i).setAvailable(availableInstArray[i]); 
+                               }
+                           return false;
+                      }
+              }
+
+           for(int i = 0; i < resourceNum; i++){
+                    ResourceTable.getResourceCB(i).setAvailable(availableInstArray[i]); 
+               }
+           return true;
+       }
+    
 }
 
 /*
