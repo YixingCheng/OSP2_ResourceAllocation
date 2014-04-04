@@ -1,0 +1,30 @@
+\documentclass[11pt]{article}
+%Gummi|065|=)
+\title{\textbf{Implementation Details for Deadlock Avoidance}}
+\author{Yixing Cheng}
+\date{}
+\begin{document}
+\maketitle
+
+\section*{}
+
+The following are the details and my strategies when I was implementing the banker algorithm for deadlock avoidance:
+
+ResourceTable class is in ResourceTable.java. It is an array of ResourceCB objects that lists all resource types available in the system. I only call super() in the constructor of this class. I will be using getSize() and getResourCB(int i) in the following.
+
+In RRB.java is the RRB class which represents the resource request block, which threads use to specify their requests to the system. This class extends class Events, thus threads can be suspend on an RRB object. First, call super() in its constructor. The do\_grant is where we actually allocate resource to thread and set available instance of resource. The new available is the old available minus request quantity and the new allocated is the old allocated plus request quantity.
+
+I do most of my work in ResourceCB class. The data structure to store all the threads and its associated resource using hashtable. Therefore it is a static member. A null RRB object is used put the thread as the key in the hashtable without requesting any resource. Another static variable resourceNum is used to store the number of resource types. I initialize these static members in init(). The do\_acquire() returns a RRB object with status: Granted, Suspended or null if it is not a valid request. To implement this method, I first get the requesting thread just as what I did in Project2. If the number of allocated instance plus the number of being requested instance is more than the total number of instance, this is not a valid request and return null. Then I put the thread in the hashtable as the key with null RRB. Then I create the requesting RRB object with requesting thread, resource being requested, and number of requesting instance as arguments. Our deadlock strategy is deadlock avoidance where is the request is granted by isGrant(), call this RRB object's grant() method. If the requesting is determined to be Suspended and it's not in the hashtable yet, then put it in the hashtable.
+
+Then let's look at isGrant(). In is Grant(), I first see whether the required instance plus already allocated is more the MAX, if it is then return Denied. If the requested is more than AVAILABLE, then I suspended the thread as well as set the status of the calling RRB object to be suspended. Then I run the safety algorithm, Banker Algorithm, that's bankderAlgo() in my code. If it is a safe state, then grant the request by returning Granted. If this is a running thread but it is not granted, then put it in the hash table if it is not there and set it to be suspended at last.
+
+The bankerAlgo() is implemented as below: first if the requested instance is more than AVAILABLE, return false. Then I create a local Integer array to store the AVAILABLE before check the safe state. To loop through all the threads, use a Vector of threadCB by adding each thread using Enumeration. Then I use two flags, goodThread is used to indicate whether this thread's NEED is less than available. noMoreGoodThread is used to indicate whether there's no more good thread, if there's no, then it is not a safe state. I do a while loop until the Vector is empty. If the Vector is empty, it means that it is a safe state. In the while loop, I loop through all thread in the Vector. If the NEED of the thread is greater than AVAILABLE, then it is not a good thread and so I set the goodthread to false. If it is a good thread, I temporarily release the resource it has been allocated, remove it from Vector, set the noMoreGoodThread to false and break from the inner loop. If all thread in the Vector are not good thread, the noMoreGoodThread will be true which indicate that this is not a safe state and I restore all available instance before running banker algorithm using the array created before and return false. If the vector is empty, we will exit the while loop. I also restore the available instance of resources and return true.
+
+In do\_giveupResources(), if the thread is not in hashtable then return. Loop through all resource to release the resource that was allocated to this thread and then remove that thread from hashtable. Now we need to determined whether there is a suspended request can be granted. To do this, I use a Iterator of RRB objects which is looped through. Whether grant the request is determined by bankerAlgo(). If it is granted, them remove the request from hashtable.
+
+In do\_release(), I first also get the calling thread and release its allocated resource and run the bankerAlgo() just as what I did in do\-giveupResources().
+
+
+
+
+\end{document}

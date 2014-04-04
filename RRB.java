@@ -3,7 +3,8 @@
  *   University of South Carolina
  *   authoer: Yixing Cheng
  *   date: Mar/31/2014
- *   RRB.java
+ *   email: cheng26@email.sc.edu
+ *   ResourceCB.java
  */
 
 package osp.Resources;
@@ -57,7 +58,6 @@ public class RRB extends IflRRB
        int newAllocated = requestRes.getAllocated(requestThread) + this.getQuantity();   //calcuate the instance of resource after allocation
 
        requestRes.setAllocated(requestThread, newAllocated);                             //set the new allocated instance of resource
-  
        this.setStatus(Granted);
 
        this.notifyThreads();       

@@ -1,3 +1,11 @@
+/*
+ *   CSCE311  Proj3 Resource 
+ *   University of South Carolina
+ *   authoer: Yixing Cheng
+ *   date: Mar/31/2014
+ *   email: cheng26@email.sc.edu
+ *   ResourceTable.java
+ */
 package osp.Resources;
 
 /**
