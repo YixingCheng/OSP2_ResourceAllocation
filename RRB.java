@@ -5,7 +5,13 @@
  *   date: Mar/31/2014
  *   email: cheng26@email.sc.edu
  *   ResourceCB.java
+ *   
+ *   if you find the code useful, please do me a favor
+ *   go to my Linkedin page: https://www.linkedin.com/profile/view?id=106078871&trk=nav_responsive_tab_profile
+ *   add endorse my Java skill
+ *   Thanks!
  */
+
 
 package osp.Resources;
 
